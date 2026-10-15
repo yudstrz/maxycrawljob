@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { INDONESIA_SQL } from "@/lib/region";
 import { normalizeJobUrl } from "@/lib/sources";
 import { toggleWishlist, triggerCrawl } from "./actions";
+import { KeywordSyncButton } from "./keyword-sync-button";
 import { SyncCard } from "./sync-card";
 
 const PAGE = 10;
@@ -214,11 +215,14 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             </span>
           </div>
 
-          {pages > 1 ? (
-            <div className="page-text">
-              Halaman {page} dari {pages}
-            </div>
-          ) : null}
+          <div className="count-bar-right">
+            {q ? <KeywordSyncButton query={q} variant="subtle" /> : null}
+            {pages > 1 ? (
+              <div className="page-text">
+                Halaman {page} dari {pages}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {jobs.length ? (
@@ -310,11 +314,16 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 </div>
                 <h2>Belum nemu lowongan yang pas</h2>
                 <p>
-                  Coba longgarkan kata kunci pencarian atau bersihkan filter di atas supaya lowongan lainnya bisa muncul.
+                  {q
+                    ? `Tidak ada lowongan tersimpan untuk kata kunci "${q}". Coba tarik loker langsung dari portal luar atau bersihkan filter.`
+                    : "Coba longgarkan kata kunci pencarian atau bersihkan filter di atas supaya lowongan lainnya bisa muncul."}
                 </p>
-                <a href="/" className="empty-action-btn">
-                  Bersihkan Filter
-                </a>
+                <div className="empty-actions-row">
+                  {q ? <KeywordSyncButton query={q} variant="primary" /> : null}
+                  <a href="/" className="empty-action-btn empty-secondary-btn">
+                    Bersihkan Filter
+                  </a>
+                </div>
               </>
             ) : (
               <>

@@ -1,5 +1,5 @@
 import { db, init } from "@/lib/db";
-import { sources } from "@/lib/sources";
+import { sources, fetchKeywordJobs } from "@/lib/sources";
 
 export type CrawlProgress = {
   completed: number;
@@ -146,5 +146,31 @@ export async function runCrawl(onProgress?: CrawlProgressCallback) {
       progressListeners.delete(onProgress);
     }
   }
+}
+
+export async function runKeywordCrawl(keyword: string): Promise<{ keyword: string; totalJobs: number }> {
+  const kw = keyword.trim();
+  if (!kw || kw.length < 2) return { keyword: kw, totalJobs: 0 };
+
+  await init();
+  const start = new Date().toISOString();
+  const jobs = await fetchKeywordJobs(kw);
+
+  if (jobs.length > 0) {
+    const statements = jobs.map((j) => ({
+      sql: `INSERT INTO jobs (id, source, company, title, location, url, is_intern, posted_at, seen_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET company=excluded.company, title=excluded.title,
+              location=excluded.location, url=excluded.url, is_intern=excluded.is_intern,
+              posted_at=excluded.posted_at, seen_at=excluded.seen_at`,
+      args: [j.id, j.id.split(":")[0], j.company, j.title, j.location, j.url, j.isIntern ? 1 : 0, j.postedAt, start],
+    }));
+
+    for (let i = 0; i < statements.length; i += 500) {
+      await db.batch(statements.slice(i, i + 500));
+    }
+  }
+
+  return { keyword: kw, totalJobs: jobs.length };
 }
 

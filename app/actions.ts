@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { db, init } from "@/lib/db";
-import { runCrawl } from "@/lib/crawler";
+import { runCrawl, runKeywordCrawl } from "@/lib/crawler";
 
 export async function toggleWishlist(jobId: string) {
   if (!jobId || jobId.length > 200) return;
@@ -29,4 +29,10 @@ export async function toggleWishlist(jobId: string) {
 export async function triggerCrawl(): Promise<void> {
   await runCrawl();
   revalidatePath("/");
+}
+
+export async function triggerKeywordCrawl(keyword: string): Promise<{ success: boolean; totalJobs: number }> {
+  const res = await runKeywordCrawl(keyword);
+  revalidatePath("/");
+  return { success: true, totalJobs: res.totalJobs };
 }

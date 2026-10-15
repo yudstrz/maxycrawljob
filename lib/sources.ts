@@ -137,3 +137,56 @@ export const sources: [string, () => Promise<Job[]>][] = [
     },
   ],
 ];
+
+export async function fetchKeywordJobs(keyword: string): Promise<Job[]> {
+  const kw = keyword.trim().toLowerCase();
+  if (!kw) return [];
+
+  const results: Job[] = [];
+  const q = encodeURIComponent(kw);
+
+  const fetchers = [
+    // Kalibrr with keywords search
+    async () => {
+      const data = await get(`https://www.kalibrr.com/api/job_board/search?limit=50&offset=0&keywords=${q}`);
+      return (data?.jobs || []).map((j: Json) => {
+        const company = j.company?.name ?? "Perusahaan";
+        const loc =
+          [j.google_location?.address_components?.city, j.google_location?.address_components?.country]
+            .filter(Boolean)
+            .join(", ") || "Indonesia";
+        const code = j.company?.code || "company";
+        const slug = j.slug || "";
+        const url = `https://www.kalibrr.com/c/${code}/jobs/${j.id}/${slug}`;
+        return job("kalibrr", j.id, company, j.name, loc, url, j.activation_date, j.function ?? "");
+      });
+    },
+    // Remotive with search
+    async () => {
+      const data = await get(`https://remotive.com/api/remote-jobs?search=${q}`);
+      return (data?.jobs || []).slice(0, 50).map((j: Json) =>
+        job("remotive", j.id, j.company_name, j.title, j.candidate_required_location ?? "Remote", j.url, j.publication_date, j.job_type ?? ""),
+      );
+    },
+    // Arbeitnow with search
+    async () => {
+      const data = await get(`https://www.arbeitnow.com/api/job-board-api?search=${q}`);
+      return (data?.data || []).slice(0, 50).map((j: Json) =>
+        job("arbeitnow", j.slug, j.company_name, j.title, j.location ?? "", j.url, (j.created_at ?? 0) * 1000, (j.job_types ?? []).join(" ")),
+      );
+    },
+  ];
+
+  await Promise.all(
+    fetchers.map(async (fn) => {
+      try {
+        const jobs = await fn();
+        for (const j of jobs) {
+          results.push(j);
+        }
+      } catch {}
+    }),
+  );
+
+  return results;
+}
