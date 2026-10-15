@@ -14,7 +14,10 @@ export type Job = {
 type Json = any;
 
 const get = async (url: string): Promise<Json> => {
-  const r = await fetch(url, { headers: { "User-Agent": "maxycrawljob (personal job aggregator)" } });
+  const r = await fetch(url, {
+    headers: { "User-Agent": "maxycrawljob (personal job aggregator)" },
+    signal: AbortSignal.timeout(3500),
+  });
   if (!r.ok) throw new Error(`${url} -> ${r.status}`);
   return r.json();
 };
@@ -95,6 +98,7 @@ export const sources: [string, () => Promise<Job[]>][] = [
     async () => {
       const res = await fetch("https://dealls.com/loker", {
         headers: { "User-Agent": "maxycrawljob (personal job aggregator)" },
+        signal: AbortSignal.timeout(3500),
       });
       if (!res.ok) throw new Error(`https://dealls.com/loker -> ${res.status}`);
       const text = await res.text();
@@ -107,7 +111,10 @@ export const sources: [string, () => Promise<Job[]>][] = [
       return docs.map((d: Json) => {
         const company = d.company?.name ?? "Perusahaan";
         const loc = d.city?.name ?? (d.workplaceType === "remote" ? "Remote" : "Indonesia");
-        const url = `https://dealls.com/loker/${d.slug || d.id}`;
+        const companySlug =
+          d.company?.slug ||
+          (d.company?.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        const url = `https://dealls.com/loker/${d.slug || d.id}${companySlug ? `~${companySlug}` : ""}`;
         const isInternship = (d.employmentTypes || []).includes("internship");
         return {
           id: `dealls:${d.id}`,

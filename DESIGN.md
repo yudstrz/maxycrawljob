@@ -11,7 +11,7 @@ Reading this as: Curated job and internship aggregator for Indonesian tech job s
 | Structural card layout with balanced spacing (filling blank gaps) | Solves the awkward empty space between title and buttons by structuring job cards with a clear metadata header, title, company/location details, and action cluster. |
 | Multi-attribute sorting (Terbaru/Desc as default, Terlama/Asc, Posisi A-Z, Perusahaan A-Z) | Gives users explicit control over chronological and alphabetical discovery with immediate visual feedback in the count summary (C-2). |
 | Zero gradients, zero glassmorphism, zero radial glow orbs | Strictly complies with R-01, R-10, R-13: every surface is matte, purposeful, and grounded. |
-| Prominent manual sync trigger ("Tarik Loker Terbaru") with live timestamp and indicator | Functional transparency (C-2, R-26): users know exactly when data was last crawled and can trigger a refresh on demand. |
+| Prominent manual sync trigger ("Tarik Loker Terbaru") with real-time loading bar, live source progress, and emerald status | Functional transparency (C-2, C-4, R-26): provides immediate visual feedback, prevents duplicate clicks, shows actual progress percentage and active job board name, and updates the view on completion without full-page flash. |
 | Distinct inline label for "Magang" (Internship) in high-contrast badge | Essential metadata distinguishing internships from full-time roles without decorative clutter (R-09). |
 | Accessible >=44px tap targets and visible focus indicators | Mobile accessibility standard (R-03, R-32) ensuring effortless touch and keyboard navigation. |
 

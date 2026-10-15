@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
-import { db, init } from "@/lib/db";
+import { db } from "@/lib/db";
 import { INDONESIA_SQL } from "@/lib/region";
 import { toggleWishlist, triggerCrawl } from "./actions";
+import { SyncCard } from "./sync-card";
 
-const PAGE = 50;
+const PAGE = 10;
 const LABEL: Record<string, string> = {
   greenhouse: "Greenhouse",
   lever: "Lever",
@@ -27,16 +28,6 @@ const fmt = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
   timeZone: "Asia/Jakarta",
 });
-
-function formatRelativeTime(isoString: string) {
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "Baru saja";
-  if (diffMin < 60) return `${diffMin} menit yang lalu`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${diffHours} jam yang lalu`;
-  return fmt.format(new Date(isoString));
-}
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
@@ -74,29 +65,31 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     sortSql = "ORDER BY company COLLATE NOCASE ASC";
   }
 
-  await init();
-  const count = await db.execute({ sql: `SELECT COUNT(*) AS n FROM jobs ${where}`, args: a });
-  const total = Number(count.rows[0].n);
-  const pages = Math.max(1, Math.ceil(total / PAGE));
-  const page = Math.min(pages, Math.max(1, parseInt(one(sp.page)) || 1));
+  const reqPage = Math.max(1, parseInt(one(sp.page)) || 1);
 
-  const [rows, mine, metaRes] = await Promise.all([
-    db.execute({
+  // ponytail: single batched roundtrip to Turso for all page data
+  const [countRes, rowsRes, mineRes, metaRes] = await db.batch([
+    { sql: `SELECT COUNT(*) AS n FROM jobs ${where}`, args: a },
+    {
       sql: `SELECT id, title, company, location, url, is_intern, source, posted_at,
                    id IN (SELECT job_id FROM wishlist WHERE owner = ?) AS saved
-            FROM jobs ${where} ${sortSql} LIMIT ${PAGE} OFFSET ${(page - 1) * PAGE}`,
+            FROM jobs ${where} ${sortSql} LIMIT ${PAGE} OFFSET ${(reqPage - 1) * PAGE}`,
       args: [owner, ...a],
-    }),
-    db.execute({
-      sql: "SELECT COUNT(*) AS n FROM wishlist w JOIN jobs j ON j.id = w.job_id WHERE w.owner = ?",
+    },
+    {
+      sql: "SELECT COUNT(*) AS n FROM wishlist WHERE owner = ?",
       args: [owner],
-    }),
-    db.execute({
+    },
+    {
       sql: "SELECT updated_at FROM crawl_meta WHERE key = 'last_crawl' LIMIT 1",
-    }),
+    },
   ]);
 
-  const jobs = rows.rows;
+  const total = Number(countRes.rows[0]?.n || 0);
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  const page = Math.min(pages, reqPage);
+  const jobs = rowsRes.rows;
+  const mine = mineRes;
   const filtered = Boolean(q || intern || region || saved || sort !== "latest");
   const lastCrawlRow = metaRes.rows[0];
   const lastCrawlAt = lastCrawlRow ? String(lastCrawlRow.updated_at) : null;
@@ -133,24 +126,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             </p>
           </div>
 
-          <div className="sync-card">
-            <div className="sync-info">
-              <span className="sync-pulse" aria-hidden="true" />
-              <span className="sync-status">
-                {lastCrawlAt
-                  ? `Sinkron terakhir: ${formatRelativeTime(lastCrawlAt)}`
-                  : "Belum pernah disinkronkan"}
-              </span>
-            </div>
-            <form action={triggerCrawl}>
-              <button type="submit" className="sync-btn" aria-label="Tarik pembaruan lowongan kerja">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                </svg>
-                <span>Tarik Loker Terbaru</span>
-              </button>
-            </form>
-          </div>
+          <SyncCard lastCrawlAt={lastCrawlAt} />
         </div>
 
         <form role="search" className="search-deck" action="/" method="GET">

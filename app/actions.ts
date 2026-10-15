@@ -26,7 +26,7 @@ export async function toggleWishlist(jobId: string) {
   revalidatePath("/");
 }
 
-export async function triggerCrawl() {
+export async function triggerCrawl(): Promise<void> {
   await runCrawl();
   revalidatePath("/");
 }
