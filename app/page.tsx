@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { INDONESIA_SQL } from "@/lib/region";
+import { normalizeJobUrl } from "@/lib/sources";
 import { toggleWishlist, triggerCrawl } from "./actions";
 import { SyncCard } from "./sync-card";
 
@@ -225,6 +226,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             {jobs.map((j) => {
               const sourcePrefix = String(j.source).split(":")[0];
               const sourceName = LABEL[sourcePrefix] || sourcePrefix;
+              const jobUrl = normalizeJobUrl(String(j.url), String(j.company));
 
               return (
                 <li key={String(j.id)} className="job-card">
@@ -243,7 +245,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                     </div>
 
                     <h2 className="job-title">
-                      <a href={String(j.url)} target="_blank" rel="noopener noreferrer">
+                      <a href={jobUrl} target="_blank" rel="noopener noreferrer">
                         {String(j.title)}
                         <span className="sr-only"> (buka di tab baru)</span>
                       </a>
@@ -278,7 +280,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                     </form>
 
                     <a
-                      href={String(j.url)}
+                      href={jobUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="external-link-btn"

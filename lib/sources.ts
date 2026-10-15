@@ -11,6 +11,14 @@ export type Job = {
   postedAt: string | null;
 };
 
+export function normalizeJobUrl(url: string, company: string): string {
+  if (url.startsWith("https://dealls.com/loker/") && !url.includes("~")) {
+    const slug = company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return `${url}~${slug}`;
+  }
+  return url;
+}
+
 type Json = any;
 
 const get = async (url: string): Promise<Json> => {
