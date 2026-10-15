@@ -1,6 +1,7 @@
+import * as cheerio from "cheerio";
 import { greenhouse, lever } from "./companies.ts";
 import { isIntern } from "./intern.ts";
-import { getRandomUA, scrapeJobSource } from "./scraper.ts";
+import { fetchHtml, getRandomUA, scrapeJobSource } from "./scraper.ts";
 
 export type Job = {
   id: string;
@@ -169,7 +170,92 @@ export const sources: [string, () => Promise<Job[]>][] = [
         },
       }),
   ],
+  [
+    "linkedin",
+    async () => fetchLinkedInJobs("Software Engineer", "Indonesia"),
+  ],
+  [
+    "google:jobs",
+    async () => fetchGoogleJobs("software engineer indonesia site:glints.com OR site:linkedin.com"),
+  ],
 ];
+
+// ponytail: native LinkedIn guest API scraper, 0 dependencies & bypasses authwall
+export async function fetchLinkedInJobs(keyword = "Software Engineer", location = "Indonesia"): Promise<Job[]> {
+  try {
+    const q = encodeURIComponent(keyword);
+    const loc = encodeURIComponent(location);
+    const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${q}&location=${loc}&start=0`;
+    const html = await fetchHtml(url, 5000);
+    const $ = cheerio.load(html);
+    const jobs: Job[] = [];
+
+    $("li").each((_, el) => {
+      const title = $(el).find(".base-search-card__title, h3").text().trim();
+      const company = $(el).find(".base-search-card__subtitle, h4").text().trim();
+      const locText = $(el).find(".job-search-card__location").text().trim() || location;
+      const rawLink = $(el).find("a.base-card__full-link").attr("href") || "";
+      const cleanLink = rawLink.split("?")[0];
+      const posted = $(el).find("time").attr("datetime") || null;
+      const idMatch = rawLink.match(/\/view\/(?:[^\/]+-)?([0-9]{8,})/);
+      const id = idMatch ? idMatch[1] : cleanLink.slice(-30);
+
+      if (title && company && cleanLink) {
+        jobs.push({
+          id: `linkedin:${id}`,
+          company,
+          title,
+          location: locText,
+          url: cleanLink,
+          isIntern: isIntern(`${title} ${company}`),
+          postedAt: iso(posted),
+        });
+      }
+    });
+
+    return jobs;
+  } catch {
+    return [];
+  }
+}
+
+// ponytail: Google Jobs via Serper if SERPER_API_KEY present, silent fallback if unconfigured
+export async function fetchGoogleJobs(keyword = "software engineer indonesia site:glints.com OR site:linkedin.com"): Promise<Job[]> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch("https://google.serper.dev/jobs", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ q: keyword, location: "Indonesia", gl: "id", hl: "id" }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list: any[] = data.jobs || [];
+
+    return list.map((j) => {
+      const cleanUrl = j.share_link || j.link || `https://www.google.com/search?q=${encodeURIComponent(`${j.title} ${j.company_name}`)}`;
+      const id = (j.job_id || cleanUrl).replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 80);
+      return {
+        id: `google:${id}`,
+        company: j.company_name || "Perusahaan",
+        title: j.title || "Lowongan Kerja",
+        location: j.location || "Indonesia",
+        url: cleanUrl,
+        isIntern: isIntern(`${j.title} ${j.detected_extensions?.schedule_type || ""}`),
+        postedAt: null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
 
 export async function fetchKeywordJobs(keyword: string): Promise<Job[]> {
   const kw = keyword.trim().toLowerCase();
@@ -194,6 +280,10 @@ export async function fetchKeywordJobs(keyword: string): Promise<Job[]> {
         return job("kalibrr", j.id, company, j.name, loc, url, j.activation_date, j.function ?? "");
       });
     },
+    // LinkedIn keyword search
+    async () => fetchLinkedInJobs(kw, "Indonesia"),
+    // Google Jobs (Glints/LinkedIn via Serper) keyword search
+    async () => fetchGoogleJobs(`${kw} indonesia site:glints.com OR site:linkedin.com`),
     // Remotive with search
     async () => {
       const data = await get(`https://remotive.com/api/remote-jobs?search=${q}`);

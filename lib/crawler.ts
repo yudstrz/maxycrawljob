@@ -30,6 +30,8 @@ export function formatSourceLabel(source: string): string {
   if (source === "remoteok") return "Remote OK";
   if (source === "kalibrr") return "Kalibrr";
   if (source === "dealls") return "Dealls";
+  if (source === "linkedin") return "LinkedIn";
+  if (source === "google:jobs") return "Google Jobs (Glints & LinkedIn)";
   return source;
 }
 

@@ -135,4 +135,10 @@ assert.equal(jobs3.length, 1);
 assert.equal(jobs3[0].title, "Magang Data Analyst");
 assert.equal(jobs3[0].isIntern, true);
 
+// Test 5: Google Jobs silent fallback without API key
+const { fetchGoogleJobs } = await import("./sources.ts");
+const googleJobs = await fetchGoogleJobs();
+assert(Array.isArray(googleJobs), "Google jobs without key must return array");
+assert.equal(googleJobs.length, 0, "Google jobs without key should return empty array");
+
 console.log("scraper tests passed!");

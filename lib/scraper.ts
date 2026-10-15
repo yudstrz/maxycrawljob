@@ -49,6 +49,21 @@ export async function fetchHtml(url: string, timeoutMs = 3500): Promise<string> 
   return res.text();
 }
 
+// ponytail: proxy url template from env ({url} placeholder), fallback to direct fetchHtml
+export async function fetchWithProxy(url: string, timeoutMs = 8000): Promise<string> {
+  const proxy = process.env.SCRAPER_PROXY_URL;
+  if (!proxy) return fetchHtml(url, timeoutMs);
+  const target = proxy.includes("{url}")
+    ? proxy.replace("{url}", encodeURIComponent(url))
+    : `${proxy}${encodeURIComponent(url)}`;
+  const res = await fetch(target, {
+    headers: { "User-Agent": getRandomUA() },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`Proxy fetch ${url} -> ${res.status}`);
+  return res.text();
+}
+
 function extractJobPostingsFromRaw(obj: unknown): any[] {
   if (!obj) return [];
   if (Array.isArray(obj)) {
