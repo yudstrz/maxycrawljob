@@ -5,8 +5,9 @@ import "./globals.css";
 const font = Public_Sans({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "maxycrawljob: lowongan dan magang",
-  description: "Lowongan kerja dan magang dari API publik Greenhouse, Lever, Remotive, Arbeitnow, dan Remote OK.",
+  title: "maxycrawljob: Lowongan Kerja dan Magang Terkurasi",
+  description:
+    "Rangkuman lowongan kerja dan magang dari Kalibrr, Dealls, Greenhouse, Lever, Remotive, Arbeitnow, dan Remote OK. Cepat, ringkas, dan langsung ke sumber asli.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

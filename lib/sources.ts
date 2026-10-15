@@ -72,4 +72,53 @@ export const sources: [string, () => Promise<Job[]>][] = [
         .filter((j: Json) => j.id) // element 0 is the legal notice
         .map((j: Json) => job("remoteok", j.id, j.company, j.position, j.location || "Remote", j.url, j.date)),
   ],
+  [
+    "kalibrr",
+    async () => {
+      const data = await get("https://www.kalibrr.com/api/job_board/search?limit=50&offset=0");
+      const list = data?.jobs || [];
+      return list.map((j: Json) => {
+        const company = j.company?.name ?? "Perusahaan";
+        const loc =
+          [j.google_location?.address_components?.city, j.google_location?.address_components?.country]
+            .filter(Boolean)
+            .join(", ") || "Indonesia";
+        const code = j.company?.code || "company";
+        const slug = j.slug || "";
+        const url = `https://www.kalibrr.com/c/${code}/jobs/${j.id}/${slug}`;
+        return job("kalibrr", j.id, company, j.name, loc, url, j.activation_date, j.function ?? "");
+      });
+    },
+  ],
+  [
+    "dealls",
+    async () => {
+      const res = await fetch("https://dealls.com/loker", {
+        headers: { "User-Agent": "maxycrawljob (personal job aggregator)" },
+      });
+      if (!res.ok) throw new Error(`https://dealls.com/loker -> ${res.status}`);
+      const text = await res.text();
+      const idx = text.indexOf('id="__NEXT_DATA__"');
+      if (idx === -1) return [];
+      const start = text.indexOf(">", idx) + 1;
+      const end = text.indexOf("</script>", start);
+      const parsed = JSON.parse(text.slice(start, end));
+      const docs = parsed.props?.pageProps?.dehydratedState?.queries?.[0]?.state?.data?.pages?.[0]?.docs || [];
+      return docs.map((d: Json) => {
+        const company = d.company?.name ?? "Perusahaan";
+        const loc = d.city?.name ?? (d.workplaceType === "remote" ? "Remote" : "Indonesia");
+        const url = `https://dealls.com/loker/${d.slug || d.id}`;
+        const isInternship = (d.employmentTypes || []).includes("internship");
+        return {
+          id: `dealls:${d.id}`,
+          company,
+          title: d.role,
+          location: loc,
+          url,
+          isIntern: isInternship || isIntern(d.role),
+          postedAt: iso(d.publishedAt || d.createdAt),
+        };
+      });
+    },
+  ],
 ];

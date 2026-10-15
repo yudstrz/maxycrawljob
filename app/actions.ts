@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { db, init } from "@/lib/db";
+import { runCrawl } from "@/lib/crawler";
 
 export async function toggleWishlist(jobId: string) {
   if (!jobId || jobId.length > 200) return;
@@ -22,5 +23,10 @@ export async function toggleWishlist(jobId: string) {
   const del = await db.execute({ sql: "DELETE FROM wishlist WHERE owner = ? AND job_id = ?", args: [owner, jobId] });
   if (!del.rowsAffected)
     await db.execute({ sql: "INSERT INTO wishlist (owner, job_id, added_at) VALUES (?, ?, ?)", args: [owner, jobId, new Date().toISOString()] });
+  revalidatePath("/");
+}
+
+export async function triggerCrawl() {
+  await runCrawl();
   revalidatePath("/");
 }
