@@ -20,4 +20,10 @@ export const init = () =>
       seen_at TEXT NOT NULL
     )`,
     `CREATE INDEX IF NOT EXISTS jobs_posted ON jobs(posted_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS wishlist (
+      owner TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (owner, job_id)
+    )`,
   ]));
