@@ -8,6 +8,15 @@ export const metadata: Metadata = {
   title: "maxycrawljob: Lowongan Kerja dan Magang Terkurasi",
   description:
     "Rangkuman lowongan kerja dan magang dari Kalibrr, Dealls, Greenhouse, Lever, Remotive, Arbeitnow, dan Remote OK. Cepat, ringkas, dan langsung ke sumber asli.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
