@@ -1,5 +1,6 @@
-import { greenhouse, lever } from "./companies";
-import { isIntern } from "./intern";
+import { greenhouse, lever } from "./companies.ts";
+import { isIntern } from "./intern.ts";
+import { getRandomUA, scrapeJobSource } from "./scraper.ts";
 
 export type Job = {
   id: string;
@@ -23,7 +24,7 @@ type Json = any;
 
 const get = async (url: string): Promise<Json> => {
   const r = await fetch(url, {
-    headers: { "User-Agent": "maxycrawljob (personal job aggregator)" },
+    headers: { "User-Agent": getRandomUA() },
     signal: AbortSignal.timeout(3500),
   });
   if (!r.ok) throw new Error(`${url} -> ${r.status}`);
@@ -105,7 +106,7 @@ export const sources: [string, () => Promise<Job[]>][] = [
     "dealls",
     async () => {
       const res = await fetch("https://dealls.com/loker", {
-        headers: { "User-Agent": "maxycrawljob (personal job aggregator)" },
+        headers: { "User-Agent": getRandomUA() },
         signal: AbortSignal.timeout(3500),
       });
       if (!res.ok) throw new Error(`https://dealls.com/loker -> ${res.status}`);
@@ -135,6 +136,38 @@ export const sources: [string, () => Promise<Job[]>][] = [
         };
       });
     },
+  ],
+  [
+    "html:jobspresso",
+    async () =>
+      scrapeJobSource({
+        source: "html:jobspresso",
+        url: "https://jobspresso.co/",
+        fallbackSelectorParser: ($, baseUrl) => {
+          const list: Job[] = [];
+          $("li.job_listing").each((_, el) => {
+            const title = $(el).find("h3").text().trim();
+            const company = $(el).find("strong").text().trim() || "Perusahaan";
+            const rawUrl = $(el).find("a").attr("href") || baseUrl;
+            const location = $(el).find(".location").text().trim() || "Remote";
+            if (!title) return;
+            const slug = rawUrl
+              .replace(/https?:\/\/jobspresso\.co\/job\//, "")
+              .replace(/\/+$/, "")
+              .slice(0, 100);
+            list.push({
+              id: `html:jobspresso:${slug || title.replace(/\s+/g, "-")}`,
+              company,
+              title,
+              location,
+              url: rawUrl,
+              isIntern: isIntern(title),
+              postedAt: null,
+            });
+          });
+          return list;
+        },
+      }),
   ],
 ];
 

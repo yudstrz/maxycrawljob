@@ -21,6 +21,10 @@ export function formatSourceLabel(source: string): string {
     const slug = source.slice("lever:".length);
     return `Lever (${slug})`;
   }
+  if (source.startsWith("html:")) {
+    const slug = source.slice("html:".length);
+    return `HTML (${slug})`;
+  }
   if (source === "remotive") return "Remotive";
   if (source === "arbeitnow") return "Arbeitnow";
   if (source === "remoteok") return "Remote OK";
